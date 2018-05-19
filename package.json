@@ -1,7 +1,7 @@
 {
   "name": "qbot",
   "dependencies": {
-    "opn": "^5.3.0",
+    "node-fetch": "^2.1.2",
     "puppeteer": "^1.4.0"
   }
 }

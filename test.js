@@ -22,10 +22,12 @@ const qbot = require('./qbot')
         const originalJs = await res.text()
 
         let patchedJs = originalJs
+        let matchStr
+        let patch
 
-        let matchStr = 'var html = tmpl({'
-        let patch = `window.qbot_handleMessage(msgArr);`
-        patchedJs = patchedJs.replace(matchStr, `\n\n${patch}\n\n${matchStr}`)
+        // matchStr = 'var html = tmpl({'
+        // patch = `window.qbot_handleMessage(msgArr);`
+        // patchedJs = patchedJs.replace(matchStr, `\n\n${patch}\n\n${matchStr}`)
 
         matchStr = 'this.sendMsg = function(param){'
         patch = 'window.qSendMsg ='
@@ -40,6 +42,12 @@ const qbot = require('./qbot')
         let matchArr = matchStr.split('=')
         matchArr.splice(1, 0, patch)
         patchedJs = patchedJs.replace(matchStr, matchArr.join('='))
+
+        // Poll拉取成功回调
+        // onPollSuccess:function(result){
+        matchStr = 'result.sort(sortMessage);'
+        patch = 'window.qbot_handleMessage(result)'
+        patchedJs = patchedJs.replace(matchStr, `result = ${matchStr}\n\n${patch}\n\n`)
 
         request.respond({
           status: 200,

@@ -3,13 +3,13 @@ const path = require('path')
 const fetch = require('node-fetch')
 const qbot = require('./qbot')
 
-const keyHandleMessage = 'qbotHandleMessage'
-
 ;(async () => {
   const browser = await puppeteer.launch({
     headless: false
   })
   const page = await browser.newPage()
+
+  qbot.page = page
 
   await page.setRequestInterception(true)
 
@@ -24,12 +24,22 @@ const keyHandleMessage = 'qbotHandleMessage'
         let patchedJs = originalJs
 
         let matchStr = 'var html = tmpl({'
-        let patch = `window.${keyHandleMessage}(msgArr);`
+        let patch = `window.qbot_handleMessage(msgArr);`
         patchedJs = patchedJs.replace(matchStr, `\n\n${patch}\n\n${matchStr}`)
 
         matchStr = 'this.sendMsg = function(param){'
-        patch = 'window.qbotSendMessage ='
+        patch = 'window.qSendMsg ='
         patchedJs = patchedJs.replace(matchStr, `\n\n${patch}\n\n${matchStr}`)
+
+        matchStr = 'onLoginSuccess:function(data){'
+        patch = `console.log('onLoginSuccess', { data })`
+        patchedJs = patchedJs.replace(matchStr, `${matchStr}\n\n${patch}\n\n`)
+
+        matchStr = 'var member_m = mq.model.buddylist'
+        patch = '\n\nwindow.qBuddyList\n\n'
+        let matchArr = matchStr.split('=')
+        matchArr.splice(1, 0, patch)
+        patchedJs = patchedJs.replace(matchStr, matchArr.join('='))
 
         request.respond({
           status: 200,
@@ -44,7 +54,12 @@ const keyHandleMessage = 'qbotHandleMessage'
 
   await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.170 Safari/537.36')
   await page.goto('https://web2.qq.com/', { waitUntil: 'networkidle0' })
-  await page.exposeFunction(keyHandleMessage, qbot.handleMessage)
+
+  await Promise.all(
+    Object.keys(qbot).map(async key => {
+      await page.exposeFunction(`qbot_${key}`, qbot[key])
+    })
+  )
 
   const loginFrameName = 'ptlogin'
 
